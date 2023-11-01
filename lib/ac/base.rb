@@ -23,7 +23,7 @@ module Ac
 
       define_method http_verb do |path, options = {}, &block|
         retries_count ||= 0
-        raise "Too many retries" if retries_count > MAX_RETRIES
+        raise "Too many retries" if retries_count > self.class::MAX_RETRIES
         # puts "Requesting #{path}, retry number #{retries_count}"
         response = send("#{http_verb}_request", path, options).run
 
@@ -32,6 +32,7 @@ module Ac
             raise unless block.call(response)
           rescue
             retries_count += 1 # standard:disable Lint/UselessAssignment
+            sleep(2**retries_count)  # Exponential backoff
             redo
           end
         end

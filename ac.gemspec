@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.authors = ["felipedmesquita"]
   spec.email = ["16197684+felipedmesquita@users.noreply.github.com"]
 
-  spec.summary = "Simple Api Client for Typhoeus"
+  spec.summary = "Api Client for Typhoeus"
   spec.homepage = "https://github.com/felipedmesquita/ac"
   spec.license = "MIT"
 
