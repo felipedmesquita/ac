@@ -1,6 +1,7 @@
 module Ac
   class Base
     MAX_RETRIES = 3
+    SAVE_RESPONSES = false
 
     attr_reader :access_token
     def initialize access_token = nil
@@ -12,7 +13,7 @@ module Ac
     end
 
     %i[get post put patch delete].each do |http_verb|
-      define_method "#{http_verb}_request" do |path, options = {}|
+      define_method :"#{http_verb}_request" do |path, options = {}|
         options[:method] = http_verb
         if access_token
           options[:headers] ||= {}
@@ -25,12 +26,14 @@ module Ac
         retries_count ||= 0
         raise "Too many retries" if retries_count > self.class::MAX_RETRIES
         # puts "Requesting #{path}, retry number #{retries_count}"
-        response = send("#{http_verb}_request", path, options).run
+        response = send(:"#{http_verb}_request", path, options).run
 
         if block
           begin
             raise unless block.call(response)
+            Database.save_request response, class_name: self.class.name if self.class::SAVE_RESPONSES
           rescue
+            Database.save_request(response, class_name: self.class.name + "_errors") if self.class::SAVE_RESPONSES
             retries_count += 1 # standard:disable Lint/UselessAssignment
             sleep(2**retries_count)  # Exponential backoff
             redo
