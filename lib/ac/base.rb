@@ -38,6 +38,8 @@ module Ac
             sleep(2**retries_count)  # Exponential backoff
             redo
           end
+        elsif self.class::SAVE_RESPONSES
+          Database.save_request response, class_name: self.class.name
         end
 
         response
