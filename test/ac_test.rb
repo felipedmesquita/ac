@@ -9,6 +9,9 @@ class AcTest < TLDR
 
   def test_httpbin_client
     client = HttpbinClient.new
+     def client.sleep duration
+      puts "sleep(#{duration})"
+    end
     res = client.get_ip
     assert_equal 200, res.code
     assert res.json["origin"]
