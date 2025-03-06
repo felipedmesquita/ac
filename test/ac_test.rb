@@ -9,9 +9,24 @@ class AcTest < TLDR
 
   def test_httpbin_client
     client = HttpbinClient.new
+    def client.sleep duration
+      puts "sleep(#{duration})"
+    end
     res = client.get_ip
     assert_equal 200, res.code
     assert res.json["origin"]
+  end
+ 
+  def test_authorization
+    client = HttpbinClient.new("access_token")
+    request = client.get_request("/ip")
+    assert request.options[:headers]["Authorization"].match? "access_token"
+  end
+
+  def test_skip_authentication
+    client = HttpbinClient.new("access_token")
+    request = client.get_request("/ip", skip_authentication: true)
+    assert_nil request.options[:headers]["Authorization"]
   end
 end
 
