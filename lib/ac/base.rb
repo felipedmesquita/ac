@@ -33,23 +33,34 @@ module Ac
       define_method http_verb do |path, options = {}, &block|
         retries_count ||= 0
         response = send(:"#{http_verb}_request", path, options).run
-        if block || response.code == 429 || response.code.between?(500, 599)
-          begin
-            raise unless block.call(response)
-            Database.save_request(response, class_name: self.class.name, retries_count: retries_count) if self.class::SAVE_RESPONSES
-          rescue
-            Database.save_request(response, class_name: self.class.name + "_errors", retries_count: retries_count) if self.class::SAVE_RESPONSES
-            retries_count += 1 # standard:disable Lint/UselessAssignment
-            if retries_count <= self.class::MAX_RETRIES
-              sleep(2**retries_count)  # Exponential backoff
-              redo
-            end
+        Database.save_request(response, class_name: self.class.name, retries_count: retries_count)
+
+        if validate_response(response, block)
+          response
+        else
+          if should_retry(response) && retries_count <= self.class::MAX_RETRIES
+            retries_count += 1
+            redo
           end
-        elsif self.class::SAVE_RESPONSES
-          Database.save_request(response, class_name: self.class.name, retries_count: retries_count)
+          raise AcError.from_response(response)
         end
-        response
       end
+    end
+
+    def validate_response(response, block = nil)
+      if block
+      begin
+      block.call(response)
+      rescue
+        false
+      end
+      else
+        response.success?
+      end
+    end
+
+    def should_retry(response)
+      response.code >= 429 || response.code == 0
     end
   end
 end
