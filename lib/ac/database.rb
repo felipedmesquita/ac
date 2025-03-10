@@ -5,13 +5,13 @@ module Ac
       model.present? && model < ActiveRecord::Base && "Extractor".safe_constantize
     end
 
-    def self.save_request response, class_name: "Ac"
+    def self.save_request(response, class_name: "Ac", retries_count: nil)
       return unless request_model_exists?
       res = Extractor::ResponseWithJson.from_response response
       ::Request.create!({
         extractor_class: class_name,
         base_url: res.request.base_url,
-        request_options: res.request.options,
+        request_options: res.request.options.merge(retries_count: retries_count),
         request_original_options: res.request.original_options,
         response_options: res.parsed_options,
         request_cache_key: res.request.cache_key
