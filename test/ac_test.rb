@@ -3,18 +3,32 @@ require "mini_mock"
 
 class AcTest < TLDR
   MiniMock.replay
+
+  def track_sleep_calls
+    sleep_calls = []
+    original_sleep = method(:sleep)
+    Object.define_method(:sleep) do |duration|
+      sleep_calls << duration
+    end
+    yield
+    sleep_calls
+  ensure
+    # Restore the original sleep method
+    Object.define_method(:sleep, original_sleep)
+  end
+
   def test_that_it_has_a_version_number
     refute_nil ::Ac::VERSION
   end
 
-  def test_httpbin_client
+  def test_exponential_backoff
     client = HttpbinClient.new
-    def client.sleep duration
-      puts "sleep(#{duration})"
+    sleeps = track_sleep_calls do
+      res = client.get_ip
+      assert_equal 200, res.response.code
+      assert res["origin"]
     end
-    res = client.get_ip
-    assert_equal 200, res.code
-    assert res.json["origin"]
+    assert_equal [1,2,4], sleeps
   end
  
   def test_authorization
@@ -28,10 +42,17 @@ class AcTest < TLDR
     request = client.get_request("/ip", skip_authentication: true)
     assert_nil request.options[:headers]["Authorization"]
   end
+
+  def test_unauthorized
+    assert_raises Ac::UnauthorizedError do
+      MeliClient.new.get_item("MLB1")
+    end
+  end
 end
 
 class HttpbinClient < Ac::Base
   BASE_URL = "https://httpbin.org"
+  MAX_RETRIES = 3
 
   def get_ip
     get("/ip") do |response|
@@ -40,5 +61,14 @@ class HttpbinClient < Ac::Base
       # puts "Received body containing: #{response.body}"
       response.json["origin"]
     end
+  end
+
+end
+
+class MeliClient < Ac::Base
+  BASE_URL = "https://api.mercadolibre.com" 
+
+  def get_item mlb
+    get("/items/#{mlb}")
   end
 end
