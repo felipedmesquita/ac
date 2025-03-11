@@ -13,7 +13,6 @@ class AcTest < TLDR
     yield
     sleep_calls
   ensure
-    # Restore the original sleep method
     Object.define_method(:sleep, original_sleep)
   end
 
