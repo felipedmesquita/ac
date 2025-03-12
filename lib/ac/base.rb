@@ -9,7 +9,7 @@ module Ac
     end
 
     def access_token
-      refresh_token if respond_to?(:refresh_token) && (token_expired? || @access_token.nil?)
+      refresh_token if respond_to?(:refresh_token) && (token_expired? || @access_token.blank?)
       @access_token
     end
 
