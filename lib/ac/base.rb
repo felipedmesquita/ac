@@ -9,8 +9,13 @@ module Ac
     end
 
     def access_token
-      refresh_token if respond_to?(:refresh_token) && (@access_token.blank? || @token_expires_at&.past?)
+      refresh_token if should_refresh?
       @access_token
+    end
+
+    def should_refresh?
+      return false unless respond_to?(:refresh_token)
+      @access_token.blank? || @token_expires_at&.past?
     end
 
     def url path
