@@ -9,7 +9,7 @@ module Ac
     end
 
     def access_token
-      refresh_token if respond_to?(:refresh_token) && (@access_token.blank? || @token_expires_at&.past?)
+      refresh_token if respond_to?(:refresh_token) && (token_expired? || @access_token.nil?)
       @access_token
     end
 
@@ -64,6 +64,12 @@ module Ac
         end
         return AcObject.from_response(response)
       end
+    end
+
+    private
+
+    def token_expired?
+      @token_expires_at.nil? || @token_expires_at&.past?
     end
 
     def run_block_validation response, block
