@@ -26,55 +26,63 @@ module Ac
       end
     end
 
-     def authenticate! options
+    def default_options
+      {
+        headers: {
+          "Content-Type" => "application/json"
+        }
+      }
+    end
+
+    def idempotency_options
+      {headers: {"x-idempotency-key" => SecureRandom.uuid}}
+    end
+
+    def authenticate! options
       if access_token
         options[:headers] ||= {}
         options[:headers]["Authorization"] = "Bearer #{access_token}"
       end
-     end
+    end
 
     %i[get post put patch delete].each do |http_verb|
       define_method :"#{http_verb}_request" do |path, options = {}|
+        options.symbolize_keys!
         options[:method] = http_verb
+        options = options.deep_merge(default_options) if default_options
+        options = options.deep_merge(idempotency_options) if idempotency_options
         authenticate!(options) unless options.delete(:skip_authentication)
+        body = JSON.dump(body) if body.is_a?(Hash) && options.dig(:headers, "Content-Type") == "application/json"
         Typhoeus::Request.new url(path), options
       end
 
       define_method http_verb do |path, options = {}, &block|
-        retries_count ||= 0
+        options.symbolize_keys!
+        request = send(:"#{http_verb}_request", path, options)
 
-        response = send(:"#{http_verb}_request", path, options).run
-        Database.save_request response, class_name: self.class.name if self.class::SAVE_RESPONSES
-
-        if block
-          unless run_block_validation(AcObject.from_response(response), block)
-            if retries_count < self.class::MAX_RETRIES
-              sleep(2**retries_count)
-              retries_count += 1
-              redo
-            else
-              raise BlockValidationError.new(AcObject.from_response(response))
-            end
-          end
-        else
-          unless response.success?
-            if can_retry?(response) && retries_count < self.class::MAX_RETRIES
-              sleep(2**retries_count)
-              retries_count += 1
-              redo
-            else
-              raise AcError.from_response(AcObject.from_response(response))
-            end
+        for retry_number in 0..MAX_RETRIES
+          response = request.run
+          Database.save_request response, class_name: self.class.name if self.class::SAVE_RESPONSES
+          ac_object = AcObject.from_response(response)
+          if validate(ac_object, block)
+            return ac_object
+          else
+            break unless block || can_retry?(ac_object.response)
+            sleep(2**retry_number)
           end
         end
-        return AcObject.from_response(response)
+
+        raise AcError.from_response(ac_object)
+
       end
     end
 
-    def run_block_validation response, block
-      block.call response
-    rescue StandardError => e
-      false
+    def validate ac_object, block=nil
+      if block
+        block.call ac_object rescue false
+      else
+        ac_object.response.success?
+      end
     end
 
     def can_retry? response

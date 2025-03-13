@@ -55,10 +55,7 @@ class HttpbinClient < Ac::Base
 
   def get_ip
     get("/ip") do |response|
-      # Use the block to retry the request if the response is not what you expect
-      # here it will fail once because the first response is set in mocks.rb to return invalid json
-      # puts "Received body containing: #{response.body}"
-      response.json["origin"]
+      response.origin
     end
   end
 
