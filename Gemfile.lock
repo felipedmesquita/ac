@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    ac (0.2.1)
+    ac (1.0.2)
       activesupport
       typhoeus
 
