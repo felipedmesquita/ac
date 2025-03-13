@@ -4,11 +4,23 @@ module Ac
 
     def self.from_response(response)
       parsed_json = JSON.parse(response.body) rescue {}
-      new(parsed_json, response: response)
+      ac_object = new(parsed_json)
+      ac_object.instance_variable_set("@response", response)
+      ac_object
     end
 
-    def initialize(parsed_json, response: nil)
-      @response = response
+    def self.new value
+      case value
+      when Hash
+        super(value)
+      when Array
+        value.map { new(_1) }
+      else
+        value
+      end
+    end
+
+    def initialize(parsed_json)
       @values = parsed_json.transform_keys(&:to_s)
       @values.keys.each do |key|
         define_singleton_method(key) { self.[](key) } unless respond_to? key
@@ -53,14 +65,7 @@ module Ac
     private
 
     def wrap(value)
-      case value
-      when Hash
-        AcObject.new(value)
-      when Array
-        value.map { wrap(_1) }
-      else
-        value
-      end
+      AcObject.new value
     end
   end
 end
