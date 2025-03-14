@@ -29,13 +29,10 @@ module Ac
     def default_options
       {
         headers: {
-          "Content-Type" => "application/json"
+          "Content-Type" => "application/json",
+          "x-idempotency-key" => SecureRandom.uuid
         }
       }
-    end
-
-    def idempotency_options
-      {headers: {"x-idempotency-key" => SecureRandom.uuid}}
     end
 
     def authenticate! options
@@ -50,9 +47,10 @@ module Ac
         options.symbolize_keys!
         options[:method] = http_verb
         options = default_options.deep_merge(options) if default_options
-        options = idempotency_options.deep_merge(options) if idempotency_options
         authenticate!(options) unless options.delete(:skip_authentication)
-        body = JSON.dump(body) if body.is_a?(Hash) && options.dig(:headers, "Content-Type") == "application/json"
+        if options[:body]
+          options[:body] = JSON.dump(options[:body]) if options[:body].is_a?(Hash) && options.dig(:headers, "Content-Type") == "application/json"
+        end
         Typhoeus::Request.new url(path), options
       end
 
