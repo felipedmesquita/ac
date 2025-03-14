@@ -49,8 +49,8 @@ module Ac
       define_method :"#{http_verb}_request" do |path, options = {}|
         options.symbolize_keys!
         options[:method] = http_verb
-        options = options.deep_merge(default_options) if default_options
-        options = options.deep_merge(idempotency_options) if idempotency_options
+        options = default_options.deep_merge(options) if default_options
+        options = idempotency_options.deep_merge(options) if idempotency_options
         authenticate!(options) unless options.delete(:skip_authentication)
         body = JSON.dump(body) if body.is_a?(Hash) && options.dig(:headers, "Content-Type") == "application/json"
         Typhoeus::Request.new url(path), options
