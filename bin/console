@@ -6,6 +6,12 @@ require "ac"
 
 # You can add fixtures and/or initialization code here to make experimenting
 # with your gem easier. You can also use a different console, if you like.
+class Httpbin < Ac::Base
+  BASE_URL = "https://httpbin.org"
 
+  def delay duration
+    get "/delay/#{duration}"
+  end
+end
 require "irb"
 IRB.start(__FILE__)

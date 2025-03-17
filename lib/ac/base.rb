@@ -57,6 +57,7 @@ module Ac
       define_method http_verb do |path, options = {}, &block|
         options.symbolize_keys!
         request = send(:"#{http_verb}_request", path, options)
+        return request if caller_locations.map(&:label).include? "Ac::Base#method_missing"
 
         for retry_number in 0..MAX_RETRIES
           response = request.run
@@ -86,5 +87,19 @@ module Ac
     def can_retry? response
       response.timed_out? || response.code == 0 || response.code == 429 || response.code >= 500
     end
+
+    def respond_to_missing? method_name, ...
+      client_method = method_name.to_s.delete_suffix!("_request")
+      client_method && respond_to?(client_method)
+    end
+
+    def method_missing method_name, ...
+      if respond_to_missing? method_name
+        send(method_name.to_s.delete_suffix("_request"), ...)
+      else
+        super
+      end
+    end
+
   end
 end
