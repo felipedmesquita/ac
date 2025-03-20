@@ -30,7 +30,7 @@ module Ac
       {
         headers: {
           "Content-Type" => "application/json",
-          "x-idempotency-key" => SecureRandom.uuid
+          "X-Idempotency-Key" => SecureRandom.uuid
         }
       }
     end
